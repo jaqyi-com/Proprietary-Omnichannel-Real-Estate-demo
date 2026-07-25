@@ -1,0 +1,13 @@
+{
+  "name": "realestate-ai-crm-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Omnichannel Real Estate AI-CRM & B2B Broker Portal — clickable client prototype",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "check": "node --check api/ai.js && node --check app.js && node --check ai.js && node --check data.js && node --check config.js"
+  }
+}

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>B2B Broker Portal — Prototype Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="broker">
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script>
+  /* ============================================================
+     2.4 — B2B Broker & External Agent Portal
+     Separate login, separate look, external-partner scope only.
+     ============================================================ */
+
+  const D = window.DEMO;
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const baht = (n) => "฿" + Number(n || 0).toLocaleString("en-US");
+  const short = (n) => n >= 1e6 ? "฿" + (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? "฿" + Math.round(n / 1e3) + "k" : baht(n);
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  let me = null;
+  let page = "dashboard";
+
+  function toast(msg) {
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  function kpi(lbl, val, dl, dir = "") {
+    return `<div class="card kpi"><div class="lbl">${esc(lbl)}</div>
+      <div class="val">${esc(val)}</div><div class="dl ${dir}">${esc(dl)}</div></div>`;
+  }
+
+  /* ---------- login ---------- */
+
+  function renderLogin() {
+    document.body.innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="brandline"><span class="mark">⚹</span>
+          <span style="font-weight:600;font-size:13.5px">${esc(window.DEMO_BRAND.company)}</span></div>
+        <h1>B2B Broker Portal</h1>
+        <p class="sub">Partner Access
+          <span class="demo-flag" style="margin-left:6px">PROTOTYPE DEMO</span></p>
+        <p class="muted" style="margin:0 0 16px;font-size:13px">
+          External agencies and independent brokers sign in here. They see only their own
+          commissions and the shared collateral vault — never internal customer data.</p>
+        <div class="role-grid">
+          ${D.BROKERS.filter((b) => b.status === "active").map((b) => `
+            <button class="role-btn broker" data-b="${b.id}">
+              <span class="ico">${esc(b.name.split(" ").map((w) => w[0]).join("").slice(0, 2))}</span>
+              <span><b>${esc(b.name)}</b><span>${esc(b.contact)} · ${esc(b.tier)} tier · ${b.rate}% commission</span></span>
+            </button>`).join("")}
+        </div>
+        <p style="margin:20px 0 0"><a href="index.html">← Back to internal CRM login</a></p>
+      </div>
+    </div>`;
+    $$("[data-b]").forEach((btn) => btn.addEventListener("click", () => {
+      me = D.BROKERS.find((x) => x.id === btn.dataset.b);
+      page = "dashboard";
+      render();
+    }));
+  }
+
+  /* ---------- shell ---------- */
+
+  const PAGES = [
+    ["dashboard",  "Dashboard",        "▤"],
+    ["commission", "My Commissions",   "฿"],
+    ["listings",   "Available Units",  "⌂"],
+    ["vault",      "Collateral Vault", "📁"]
+  ];
+
+  function render() {
+    if (!me) return renderLogin();
+    document.body.innerHTML = `
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="logo"><span class="mark">⚹</span>
+            <span>Partner Portal<small>${esc(me.name)}</small></span></div>
+        </div>
+        <nav class="nav">
+          <div class="nav-group">Broker tools</div>
+          ${PAGES.map(([id, label, ic]) => `
+            <button data-p="${id}" class="${page === id ? "active" : ""}">
+              <span class="ni">${ic}</span>${esc(label)}</button>`).join("")}
+        </nav>
+        <div class="side-foot">
+          <div class="who">
+            <span class="av" style="background:var(--gold)">${esc(me.contact.split(" ").map((w) => w[0]).join("").slice(0, 2))}</span>
+            <span><b>${esc(me.contact)}</b><span>${esc(me.tier)} partner</span></span>
+          </div>
+          <button class="btn sm ghost" style="margin-top:8px" data-out>Sign out</button>
+        </div>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h2>${esc(PAGES.find((p) => p[0] === page)[1])}</h2>
+          <div class="spacer"></div>
+          <span class="pill gold">${esc(me.tier)} · ${me.rate}%</span>
+          <span class="demo-flag">DEMO DATA</span>
+        </header>
+        <div class="content" id="c"></div>
+      </div>
+    </div>`;
+    $$("[data-p]").forEach((b) => b.addEventListener("click", () => { page = b.dataset.p; render(); }));
+    $("[data-out]").addEventListener("click", () => { me = null; render(); });
+    ({ dashboard: pDash, commission: pComm, listings: pList, vault: pVault }[page])();
+  }
+
+  /* ---------- pages ---------- */
+
+  function nextTier() {
+    const idx = D.TIERS.findIndex((t) => t.tier === me.tier);
+    return D.TIERS[idx + 1] || null;
+  }
+
+  function pDash() {
+    const nt = nextTier();
+    const gap = nt ? nt.min - me.ytdSales : 0;
+    const pct = nt ? Math.min(100, (me.ytdSales / nt.min) * 100) : 100;
+
+    $("#c").innerHTML = `
+    <p class="page-intro">Welcome back, ${esc(me.contact.split(" ")[0])}. Here's your ${esc(window.DEMO_BRAND.company)} performance.</p>
+
+    <div class="grid g4" style="margin-bottom:16px">
+      ${kpi("YTD sales", short(me.ytdSales), `${me.deals} closed deals`, "up")}
+      ${kpi("Commission earned", short(me.pending + me.paid), `at ${me.rate}%`, "")}
+      ${kpi("Pending payout", short(me.pending), me.pending ? "processing" : "nothing pending", me.pending ? "dn" : "up")}
+      ${kpi("Paid to date", short(me.paid), "year to date", "")}
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <div class="card-h"><h3>Tier progress</h3></div>
+        <div class="card-b">
+          <div class="row" style="margin-bottom:10px">
+            <span class="pill gold">${esc(me.tier)}</span>
+            <span class="muted" style="font-size:12px">current — ${me.rate}% commission</span>
+          </div>
+          <div class="esc-bar" style="height:10px"><i style="width:${pct}%;background:var(--gold)"></i></div>
+          <p class="muted" style="font-size:12.5px;margin:10px 0 0">
+            ${nt ? `${short(gap)} more in sales to reach <b>${esc(nt.tier)}</b> and unlock <b>${nt.rate}%</b> commission.`
+                 : "You are at the highest tier. 🎉"}</p>
+          <div class="table-wrap" style="margin-top:14px"><table>
+            <thead><tr><th>Tier</th><th>Qualifying sales</th><th>Rate</th></tr></thead>
+            <tbody>${D.TIERS.map((t) => `<tr style="${t.tier === me.tier ? "background:var(--gold-soft)" : ""}">
+              <td><b>${esc(t.tier)}</b>${t.tier === me.tier ? ` <span class="pill gold">you</span>` : ""}</td>
+              <td>${t.min ? short(t.min) + "+" : "—"}</td><td>${t.rate}%</td></tr>`).join("")}
+            </tbody></table></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Payout schedule</h3></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Period</th><th>Deals</th><th>Commission</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>July 2026</td><td>${Math.max(1, me.deals - 2)}</td><td><b>${short(me.pending)}</b></td>
+              <td><span class="pill amber">pending approval</span></td></tr>
+            <tr><td>June 2026</td><td>2</td><td>${short(me.paid * 0.4)}</td><td><span class="pill green">paid</span></td></tr>
+            <tr><td>May 2026</td><td>1</td><td>${short(me.paid * 0.35)}</td><td><span class="pill green">paid</span></td></tr>
+            <tr><td>April 2026</td><td>1</td><td>${short(me.paid * 0.25)}</td><td><span class="pill green">paid</span></td></tr>
+          </tbody></table></div>
+        <div class="card-b" style="border-top:1px solid var(--border)">
+          <span class="muted" style="font-size:11.5px">Payouts are released on the 15th of the following month after developer confirmation.</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function pComm() {
+    const deals = Array.from({ length: me.deals }, (_, i) => {
+      const u = D.UNITS[i % D.UNITS.length];
+      const p = D.PROJECTS.find((x) => x.id === u.projectId);
+      const paid = i >= 2;
+      return { unit: u, project: p, price: u.price, comm: Math.round(u.price * me.rate / 100), paid, date: `2026-0${(i % 6) + 2}-1${i % 9}` };
+    });
+    const totalComm = deals.reduce((n, d) => n + d.comm, 0);
+
+    $("#c").innerHTML = `
+    <p class="page-intro">Every deal you have sourced, with the commission calculated at your ${me.rate}% ${esc(me.tier)} rate (2.4).</p>
+    <div class="grid g3" style="margin-bottom:16px">
+      ${kpi("Total commission", short(totalComm), `${deals.length} deals`, "")}
+      ${kpi("Approved & paid", short(deals.filter((d) => d.paid).reduce((n, d) => n + d.comm, 0)), "cleared", "up")}
+      ${kpi("Awaiting payout", short(deals.filter((d) => !d.paid).reduce((n, d) => n + d.comm, 0)), "in review", "dn")}
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Commission ledger</h3><div class="spacer"></div>
+        <button class="btn sm gold" data-inv>⬇ Download statement</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Project</th><th>Unit</th><th>Sale price</th><th>Rate</th><th>Commission</th><th>Status</th></tr></thead>
+        <tbody>${deals.map((d) => `
+          <tr><td class="muted">${esc(d.date)}</td>
+          <td style="font-size:12.5px">${esc(d.project.name)}</td>
+          <td class="mono">${esc(d.unit.unit)}</td>
+          <td>${baht(d.price)}</td><td>${me.rate}%</td>
+          <td><b>${baht(d.comm)}</b></td>
+          <td><span class="pill ${d.paid ? "green" : "amber"}">${d.paid ? "paid" : "pending"}</span></td></tr>`).join("")}
+        </tbody></table></div>
+    </div>`;
+    $("[data-inv]").addEventListener("click", () => toast("Statement export is stubbed in the prototype (PDF generation is Phase 5)."));
+  }
+
+  function pList() {
+    $("#c").innerHTML = `
+    <p class="page-intro">Live inventory you are authorised to sell. Sold and reserved units are hidden from partners automatically.</p>
+    <div class="grid g3" style="margin-bottom:16px">
+      ${D.PROJECTS.map((p) => {
+        const av = D.UNITS.filter((u) => u.projectId === p.id && u.status === "available");
+        const min = av.length ? Math.min(...av.map((u) => u.price)) : 0;
+        return `<div class="card"><div class="card-b">
+          <div class="row"><b>${esc(p.name)}</b><span class="pill green" style="margin-left:auto">${av.length} units</span></div>
+          <div class="muted" style="font-size:12px;margin:4px 0 8px">${esc(p.location)}</div>
+          <div class="row wrap" style="gap:5px">
+            <span class="pill">${esc(p.completion)}</span>
+            <span class="pill gold">from ${short(min)}</span></div>
+          <div class="muted" style="font-size:11.5px;margin-top:8px">Your commission at ${me.rate}%: <b>${short(min * me.rate / 100)}+</b></div>
+        </div></div>`;
+      }).join("")}
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Available units</h3></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Unit</th><th>Project</th><th>Type</th><th>Size</th><th>View</th><th>Price</th><th>Your commission</th><th></th></tr></thead>
+        <tbody>${D.UNITS.filter((u) => u.status === "available").map((u) => {
+          const p = D.PROJECTS.find((x) => x.id === u.projectId);
+          return `<tr><td class="mono"><b>${esc(u.unit)}</b></td>
+            <td style="font-size:12px">${esc(p.name)}</td><td>${esc(u.type)}</td>
+            <td>${u.sqm} sqm</td><td>${esc(u.view)}</td>
+            <td><b>${baht(u.price)}</b></td>
+            <td><span class="pill gold">${baht(Math.round(u.price * me.rate / 100))}</span></td>
+            <td><button class="btn sm gold" data-res="${esc(u.unit)}">Reserve</button></td></tr>`;
+        }).join("")}</tbody></table></div>
+    </div>`;
+    $$("[data-res]").forEach((b) => b.addEventListener("click", () =>
+      toast(`Reservation request for ${b.dataset.res} sent to the developer. (Prototype — no booking is created.)`)));
+  }
+
+  function pVault() {
+    $("#c").innerHTML = `
+    <p class="page-intro">Central, authorised hub for the latest sales material. Always the current version — no more outdated price lists (2.4).</p>
+    <div class="card">
+      <div class="card-h"><h3>Shared collateral vault</h3><div class="spacer"></div>
+        <span class="pill">${D.COLLATERAL.length} files</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>File</th><th>Project</th><th>Type</th><th>Size</th><th>Updated</th><th></th></tr></thead>
+        <tbody>${D.COLLATERAL.map((f) => `
+          <tr><td><b style="font-size:12.5px">${esc(f.name)}</b></td>
+          <td style="font-size:12px">${esc(f.project)}</td>
+          <td><span class="pill">${esc(f.type)}</span></td>
+          <td class="muted">${esc(f.size)}</td>
+          <td class="muted">${esc(f.updated)}</td>
+          <td><button class="btn sm" data-dl="${esc(f.name)}">⬇ Download</button></td></tr>`).join("")}
+        </tbody></table></div>
+    </div>`;
+    $$("[data-dl]").forEach((b) => b.addEventListener("click", () =>
+      toast(`"${b.dataset.dl}" — file delivery is stubbed in the prototype. Phase 5 serves it from secure on-prem storage.`)));
+  }
+
+  render();
+  </script>
+</body>
+</html>
