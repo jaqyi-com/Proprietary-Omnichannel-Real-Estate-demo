@@ -555,3 +555,424 @@ body.broker .login-card .brandline .mark {
   box-shadow: 0 2px 8px rgba(161,98,7,.28);
 }
 body.broker .btn.primary { box-shadow: 0 1px 2px rgba(161,98,7,.28); }
+
+/* ============================================================
+   ANIMATIONS & MICRO-INTERACTIONS
+   ============================================================ */
+
+/* ---------- GLOBAL: respect reduced-motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ========== 1. LOGIN PAGE ========== */
+
+/* Card floats up from below */
+@keyframes loginCardIn {
+  from { opacity: 0; transform: translateY(28px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+.login-card {
+  animation: loginCardIn .52s cubic-bezier(.16,1,.3,1) both;
+}
+
+/* Brand mark rotates in */
+@keyframes markSpin {
+  from { opacity: 0; transform: rotate(-18deg) scale(.7); }
+  to   { opacity: 1; transform: rotate(0deg)   scale(1);  }
+}
+.login-card .brandline .mark {
+  animation: markSpin .45s cubic-bezier(.34,1.56,.64,1) .12s both;
+}
+
+/* Headline slides in */
+@keyframes headIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.login-card h1 { animation: headIn .4s ease .22s both; }
+.login-card .sub { animation: headIn .4s ease .30s both; }
+
+/* Role buttons stagger up */
+@keyframes roleIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.role-btn:nth-child(1) { animation: roleIn .38s cubic-bezier(.16,1,.3,1) .30s both; }
+.role-btn:nth-child(2) { animation: roleIn .38s cubic-bezier(.16,1,.3,1) .40s both; }
+.role-btn:nth-child(3) { animation: roleIn .38s cubic-bezier(.16,1,.3,1) .50s both; }
+.role-btn:nth-child(4) { animation: roleIn .38s cubic-bezier(.16,1,.3,1) .60s both; }
+
+/* Role button click ripple + spring scale */
+.role-btn { transition: border-color .14s, background .14s, box-shadow .14s, transform .15s cubic-bezier(.34,1.56,.64,1); }
+.role-btn:active { transform: scale(.97); }
+
+/* Role icon hop on hover */
+.role-btn .ico { transition: background .14s, border-color .14s, transform .2s cubic-bezier(.34,1.56,.64,1); }
+.role-btn:hover .ico { transform: scale(1.12) rotate(-4deg); }
+
+/* Floating gradient orbs on login background */
+@keyframes orb1 { 0%,100%{transform:translate(0,0);}50%{transform:translate(18px,-22px);} }
+@keyframes orb2 { 0%,100%{transform:translate(0,0);}50%{transform:translate(-14px,18px);} }
+.login-wrap::before, .login-wrap::after {
+  content: ""; position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+  filter: blur(80px); opacity: .38;
+}
+.login-wrap::before {
+  width: 520px; height: 360px; top: -80px; left: -120px;
+  background: radial-gradient(circle, #93c5fd, #6366f1);
+  animation: orb1 9s ease-in-out infinite;
+}
+.login-wrap::after {
+  width: 440px; height: 320px; bottom: -60px; right: -100px;
+  background: radial-gradient(circle, #fde68a, #fb7185);
+  animation: orb2 11s ease-in-out infinite;
+}
+.login-card { position: relative; z-index: 1; }
+
+/* ========== 2. PAGE / CONTENT TRANSITIONS ========== */
+
+/* Every page content area fades + slides on render */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.content { animation: pageIn .3s cubic-bezier(.16,1,.3,1) both; }
+
+/* Page intro text */
+.page-intro { animation: pageIn .35s ease .05s both; }
+
+/* ========== 3. SIDEBAR ========== */
+
+/* Sidebar slides in from left on login */
+@keyframes sidebarIn {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.sidebar { animation: sidebarIn .38s cubic-bezier(.16,1,.3,1) both; }
+
+/* Brand mark subtle pulse every 8s */
+@keyframes brandPulse {
+  0%,90%,100% { box-shadow: 0 1px 4px rgba(37,99,235,.3); }
+  95% { box-shadow: 0 0 0 6px rgba(37,99,235,.12), 0 1px 4px rgba(37,99,235,.3); }
+}
+.brand .mark { animation: brandPulse 8s ease-in-out infinite 3s; }
+
+/* Nav item: active indicator slides in from left */
+.nav button.active::before {
+  animation: navBarIn .25s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes navBarIn {
+  from { height: 0; opacity: 0; }
+  to   { height: calc(100% - 12px); opacity: 1; }
+}
+
+/* Nav buttons: icon nudge on hover */
+.nav button .ni { transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
+.nav button:hover .ni { transform: translateX(2px) scale(1.12); }
+
+/* ========== 4. TOPBAR ========== */
+
+/* Topbar slides down */
+@keyframes topbarIn {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.topbar { animation: topbarIn .32s cubic-bezier(.16,1,.3,1) both; }
+
+/* AI badge shimmer */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.ai-badge {
+  background-size: 200% auto;
+  transition: box-shadow .2s;
+}
+.ai-badge:not(.sim) {
+  background: linear-gradient(90deg, var(--violet-soft) 0%, #e9d8fd 40%, var(--violet-soft) 80%);
+  background-size: 200% auto;
+  animation: shimmer 3.5s linear infinite;
+}
+
+/* ========== 5. CARDS ========== */
+
+/* Cards lift on hover */
+.card {
+  transition: box-shadow .2s ease, transform .2s cubic-bezier(.16,1,.3,1);
+}
+.card:hover {
+  box-shadow: var(--sh-md);
+  transform: translateY(-1px);
+}
+/* KPI cards: float up staggered */
+@keyframes kpiIn {
+  from { opacity: 0; transform: translateY(20px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+.kpi { animation: kpiIn .42s cubic-bezier(.16,1,.3,1) both; }
+.grid.g4 .kpi:nth-child(1) { animation-delay: .04s; }
+.grid.g4 .kpi:nth-child(2) { animation-delay: .10s; }
+.grid.g4 .kpi:nth-child(3) { animation-delay: .16s; }
+.grid.g4 .kpi:nth-child(4) { animation-delay: .22s; }
+
+/* KPI value count-up look: starts semi-transparent */
+.kpi .val { animation: kpiVal .6s ease .2s both; }
+@keyframes kpiVal {
+  from { opacity: 0; letter-spacing: .04em; }
+  to   { opacity: 1; letter-spacing: -.032em; }
+}
+
+/* ========== 6. BUTTONS ========== */
+
+/* Primary button pulse glow on hover */
+.btn.primary {
+  transition: background .13s, border-color .13s, box-shadow .2s, transform .15s cubic-bezier(.34,1.56,.64,1);
+}
+.btn.primary:hover {
+  box-shadow: 0 0 0 4px rgba(37,99,235,.18), 0 1px 3px rgba(37,99,235,.3);
+  transform: translateY(-1px);
+}
+.btn.primary:active { transform: scale(.96); }
+
+/* Regular button spring */
+.btn { transition: background .13s, border-color .13s, box-shadow .13s, transform .15s cubic-bezier(.34,1.56,.64,1); }
+.btn:active { transform: scale(.96); }
+
+/* ========== 7. PILLS ========== */
+
+/* "Live" green pill pulses */
+@keyframes livePulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(4,120,87,.35); }
+  50%      { box-shadow: 0 0 0 5px rgba(4,120,87,0); }
+}
+.pill.green { animation: livePulse 2.8s ease-in-out infinite; }
+
+/* Unread dot pulses */
+@keyframes dotPulse {
+  0%,100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.5); opacity: .7; }
+}
+.unread-dot { animation: dotPulse 1.8s ease-in-out infinite; }
+
+/* ========== 8. INBOX ========== */
+
+/* Thread rows slide in */
+@keyframes threadIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.thread { animation: threadIn .28s ease both; }
+.thread:nth-child(1)  { animation-delay: .02s; }
+.thread:nth-child(2)  { animation-delay: .05s; }
+.thread:nth-child(3)  { animation-delay: .08s; }
+.thread:nth-child(4)  { animation-delay: .11s; }
+.thread:nth-child(5)  { animation-delay: .14s; }
+.thread:nth-child(6)  { animation-delay: .17s; }
+.thread:nth-child(7)  { animation-delay: .20s; }
+.thread:nth-child(8)  { animation-delay: .23s; }
+
+/* Message bubbles slide in */
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);   }
+}
+.msg { animation: msgIn .25s cubic-bezier(.16,1,.3,1) both; }
+.msg:nth-child(1)  { animation-delay: .02s; }
+.msg:nth-child(2)  { animation-delay: .06s; }
+.msg:nth-child(3)  { animation-delay: .10s; }
+.msg:nth-child(4)  { animation-delay: .14s; }
+.msg:nth-child(5)  { animation-delay: .18s; }
+.msg:nth-child(6)  { animation-delay: .22s; }
+.msg:nth-child(7)  { animation-delay: .26s; }
+
+/* Channel badge bounce on appear */
+@keyframes chanBounce {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  70%  { transform: scale(1.15) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.chan { animation: chanBounce .3s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ========== 9. PIPELINE ========== */
+
+/* Pipeline columns slide up staggered */
+@keyframes colIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.col { animation: colIn .35s cubic-bezier(.16,1,.3,1) both; }
+.pipe .col:nth-child(1) { animation-delay: .04s; }
+.pipe .col:nth-child(2) { animation-delay: .09s; }
+.pipe .col:nth-child(3) { animation-delay: .14s; }
+.pipe .col:nth-child(4) { animation-delay: .19s; }
+.pipe .col:nth-child(5) { animation-delay: .24s; }
+.pipe .col:nth-child(6) { animation-delay: .29s; }
+
+/* Deal card grab spring */
+.deal {
+  transition: box-shadow .13s, border-color .13s, transform .18s cubic-bezier(.34,1.56,.64,1), opacity .15s;
+}
+.deal:hover { transform: translateY(-2px) rotate(.4deg); }
+.deal.dragging { opacity: .3; transform: rotate(2.5deg) scale(1.04); }
+
+/* ========== 10. TABLE ROWS ========== */
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+tbody tr { animation: rowIn .22s ease both; }
+tbody tr:nth-child(1)  { animation-delay: .02s; }
+tbody tr:nth-child(2)  { animation-delay: .04s; }
+tbody tr:nth-child(3)  { animation-delay: .06s; }
+tbody tr:nth-child(4)  { animation-delay: .08s; }
+tbody tr:nth-child(5)  { animation-delay: .10s; }
+tbody tr:nth-child(6)  { animation-delay: .12s; }
+tbody tr:nth-child(7)  { animation-delay: .14s; }
+tbody tr:nth-child(8)  { animation-delay: .16s; }
+tbody tr:nth-child(9)  { animation-delay: .18s; }
+tbody tr:nth-child(10) { animation-delay: .20s; }
+tbody tr:nth-child(n+11) { animation-delay: .22s; }
+
+/* ========== 11. CALL PANEL ========== */
+
+/* Phone card drops in */
+@keyframes phoneIn {
+  from { opacity: 0; transform: scale(.92) translateY(14px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+.phone { animation: phoneIn .4s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* Call button spring */
+.kbtn { transition: transform .16s cubic-bezier(.34,1.56,.64,1), filter .14s; }
+.kbtn:hover { transform: scale(1.1); }
+.kbtn:active { transform: scale(.92); }
+
+/* Ring animation on avatar */
+@keyframes ringPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(96,165,250,.5); }
+  70%  { box-shadow: 0 0 0 20px rgba(96,165,250,0);  }
+  100% { box-shadow: 0 0 0 0   rgba(96,165,250,0);  }
+}
+.phone.ringing .pav { animation: ringPulse 1s ease-out infinite; }
+
+/* Wave bars animated fill */
+.wave i:nth-child(1) { animation-delay: 0s; }
+.wave i:nth-child(2) { animation-delay: .12s; }
+.wave i:nth-child(3) { animation-delay: .24s; }
+.wave i:nth-child(4) { animation-delay: .36s; }
+.wave i:nth-child(5) { animation-delay: .48s; }
+
+/* ========== 12. SMART ROUTING ========== */
+
+/* Routing steps pop in when .on */
+.step { transition: opacity .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
+.step.on { transform: translateX(0); }
+
+/* Routing step dot bounces when active */
+@keyframes dotBounce {
+  0%   { transform: scale(0.6); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.step.on .dot { animation: dotBounce .35s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* Hit cell in routing matrix flashes */
+@keyframes hitFlash {
+  0%,100% { background: var(--green-soft); }
+  50%      { background: #bbf7d0; }
+}
+.hit { animation: hitFlash 1.2s ease-in-out 2; }
+
+/* Escalation bar fill animation */
+.esc-bar i { transition: width .25s linear; }
+
+/* ========== 13. TIMELINE (Customer 360) ========== */
+
+@keyframes tlIn {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.tl-item { animation: tlIn .3s ease both; }
+.tl-item:nth-child(1) { animation-delay: .04s; }
+.tl-item:nth-child(2) { animation-delay: .09s; }
+.tl-item:nth-child(3) { animation-delay: .14s; }
+.tl-item:nth-child(4) { animation-delay: .19s; }
+.tl-item:nth-child(5) { animation-delay: .24s; }
+.tl-item:nth-child(n+6) { animation-delay: .29s; }
+
+/* Timeline dot pop */
+@keyframes tlDot {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.tl-item::before { animation: tlDot .25s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ========== 14. PROGRESS BARS ========== */
+
+/* Score bars animate width on load */
+@keyframes barFill {
+  from { width: 0 !important; }
+}
+.score-bar i      { animation: barFill .7s cubic-bezier(.16,1,.3,1) .1s both; }
+.esc-bar i        { animation: none; }  /* controlled by JS */
+.funnel-row .fb   { animation: barFill .65s cubic-bezier(.16,1,.3,1) .15s both; }
+.bars .b i        { animation: barFill .65s cubic-bezier(.16,1,.3,1) .2s both; }
+
+/* ========== 15. TOAST ========== */
+
+@keyframes toastIn {
+  from { transform: translateY(16px) scale(.96); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
+.toast { animation: toastIn .26s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ========== 16. MODAL ========== */
+
+@keyframes modalBgIn  { from { opacity: 0; backdrop-filter: blur(0); } }
+@keyframes modalCardIn {
+  from { transform: scale(.94) translateY(16px); opacity: 0; }
+  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+.modal-bg { animation: modalBgIn .18s ease both; }
+.modal     { animation: modalCardIn .26s cubic-bezier(.34,1.56,.64,1) .05s both; }
+
+/* ========== 17. AI CHAT ========== */
+
+/* Source chips slide in */
+@keyframes srcIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.src { animation: srcIn .25s ease both; }
+.src:nth-child(1) { animation-delay: .1s; }
+.src:nth-child(2) { animation-delay: .17s; }
+.src:nth-child(3) { animation-delay: .24s; }
+.src:nth-child(4) { animation-delay: .31s; }
+.src:nth-child(5) { animation-delay: .38s; }
+
+/* ========== 18. BRAND MARK (sidebar) SPIN ON LOAD ========== */
+
+@keyframes markIn {
+  from { transform: rotate(-20deg) scale(.75); opacity: 0; }
+  to   { transform: rotate(0deg)   scale(1);   opacity: 1; }
+}
+.brand .mark { animation: markIn .4s cubic-bezier(.34,1.56,.64,1) .1s both, brandPulse 8s ease-in-out infinite 4s; }
+
+/* ========== 19. FUNNEL ROWS stagger ========== */
+
+.funnel-row:nth-child(1)  { animation: rowIn .22s ease .03s both; }
+.funnel-row:nth-child(2)  { animation: rowIn .22s ease .06s both; }
+.funnel-row:nth-child(3)  { animation: rowIn .22s ease .09s both; }
+.funnel-row:nth-child(4)  { animation: rowIn .22s ease .12s both; }
+.funnel-row:nth-child(5)  { animation: rowIn .22s ease .15s both; }
+.funnel-row:nth-child(6)  { animation: rowIn .22s ease .18s both; }
+
+/* ========== 20. FORM INPUTS focus glow ========== */
+
+input[type=text], input[type=search], input[type=number], select, textarea {
+  transition: border-color .15s, box-shadow .15s, transform .12s;
+}
+input:focus, select:focus, textarea:focus { transform: translateY(-1px); }
+
