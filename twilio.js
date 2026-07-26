@@ -27,11 +27,16 @@ const TW = (() => {
 
   /* The SDK is only fetched when Twilio is actually configured, so an
      offline demo never waits on a CDN. Override with
-     window.TWILIO_CONFIG.sdkUrl if you self-host the file. */
+     window.TWILIO_CONFIG.sdkUrl if you self-host the file.
+
+     Pinned version first so a demo never picks up a breaking change
+     mid-pitch. Twilio's own CDN is last — it answers 403 from some
+     networks, and a failed attempt costs a round-trip. */
+  const SDK_VERSION = "2.18.3";
   const SDK_URLS = [
-    "https://sdk.twilio.com/js/voice/releases/2.14.0/twilio.min.js",
-    "https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2/dist/twilio.min.js",
-    "https://unpkg.com/@twilio/voice-sdk@2/dist/twilio.min.js"
+    `https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@${SDK_VERSION}/dist/twilio.min.js`,
+    `https://unpkg.com/@twilio/voice-sdk@${SDK_VERSION}/dist/twilio.min.js`,
+    `https://sdk.twilio.com/js/voice/releases/${SDK_VERSION}/twilio.min.js`
   ];
 
   const isLive = () => server === "ready";
