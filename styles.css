@@ -976,3 +976,92 @@ input[type=text], input[type=search], input[type=number], select, textarea {
 }
 input:focus, select:focus, textarea:focus { transform: translateY(-1px); }
 
+/* ============================================================
+   ROLE-SPECIFIC DASHBOARD BACKGROUNDS
+   Each role gets a distinct, signature colour identity.
+   The sidebar stays white — colour is in the main area only.
+   ============================================================ */
+
+/* ── Sales Agent — Cool Sky Blue ── */
+.shell[data-role="agent"] {
+  background:
+    radial-gradient(ellipse 900px 560px at 85% 10%,  rgba(219,234,254,.72) 0%, transparent 65%),
+    radial-gradient(ellipse 700px 420px at 10% 90%,  rgba(224,242,254,.55) 0%, transparent 60%),
+    radial-gradient(ellipse 500px 300px at 50% 50%,  rgba(239,246,255,.40) 0%, transparent 70%),
+    #f4f8ff;
+}
+.shell[data-role="agent"] .main {
+  background: transparent;
+}
+.shell[data-role="agent"] .content {
+  background: transparent;
+}
+/* Sidebar: keep crisp white */
+.shell[data-role="agent"] .sidebar {
+  background: #ffffff;
+}
+/* Topbar: slightly tinted */
+.shell[data-role="agent"] .topbar {
+  background: rgba(239,246,255,.90);
+  border-bottom-color: rgba(147,197,253,.35);
+}
+
+/* ── Sales Manager — Deep Indigo-Violet ── */
+.shell[data-role="manager"] {
+  background:
+    radial-gradient(ellipse 1000px 600px at 80% -5%,  rgba(221,214,254,.65) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 500px at 5%  95%,   rgba(196,181,253,.45) 0%, transparent 65%),
+    radial-gradient(ellipse 500px 350px at 55% 55%,   rgba(237,233,254,.35) 0%, transparent 70%),
+    #f6f4ff;
+}
+.shell[data-role="manager"] .sidebar {
+  background: #ffffff;
+}
+.shell[data-role="manager"] .topbar {
+  background: rgba(246,243,255,.92);
+  border-bottom-color: rgba(196,181,253,.40);
+}
+
+/* ── Executive — Premium Navy Teal ── */
+.shell[data-role="executive"] {
+  background:
+    radial-gradient(ellipse 1100px 620px at 90%  0%,  rgba(186,230,253,.58) 0%, transparent 60%),
+    radial-gradient(ellipse  800px 500px at  0% 100%, rgba(199,236,234,.52) 0%, transparent 65%),
+    radial-gradient(ellipse  600px 380px at 45%  55%, rgba(224,242,254,.38) 0%, transparent 72%),
+    #f0f9ff;
+}
+.shell[data-role="executive"] .sidebar {
+  background: #ffffff;
+}
+.shell[data-role="executive"] .topbar {
+  background: rgba(240,249,255,.92);
+  border-bottom-color: rgba(125,211,252,.35);
+}
+/* Give KPI cards a very subtle teal tint */
+.shell[data-role="executive"] .kpi {
+  background: linear-gradient(135deg, #ffffff 70%, rgba(224,242,254,.55));
+}
+
+/* ── Agent — accent on active nav ── */
+.shell[data-role="agent"]    .nav button.active { background: rgba(219,234,254,.80); color: #1e40af; }
+.shell[data-role="manager"]  .nav button.active { background: rgba(237,233,254,.80); color: #5b21b6; }
+.shell[data-role="executive"].nav button.active { background: rgba(224,242,254,.80); color: #075985; }
+
+/* Coloured left accent bar per role */
+.shell[data-role="agent"]    .nav button.active::before { background: #3b82f6; }
+.shell[data-role="manager"]  .nav button.active::before { background: #7c3aed; }
+.shell[data-role="executive"].nav button.active::before { background: #0284c7; }
+
+/* Coloured brand mark per role (overrides single colour) */
+.shell[data-role="agent"]    .brand .mark { background: linear-gradient(145deg, #3b82f6, #1e3a8a); }
+.shell[data-role="manager"]  .brand .mark { background: linear-gradient(145deg, #8b5cf6, #4c1d95); }
+.shell[data-role="executive"].brand .mark { background: linear-gradient(145deg, #0ea5e9, #075985); }
+
+/* ── Broker portal gets warm gold background (broker.html) ── */
+body.broker {
+  background:
+    radial-gradient(ellipse 900px 560px at 85% 5%,   rgba(254,243,199,.75) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 440px at 5%  95%,  rgba(253,230,138,.55) 0%, transparent 65%),
+    radial-gradient(ellipse 500px 320px at 50% 50%,  rgba(255,251,235,.45) 0%, transparent 70%),
+    #fffbeb;
+}

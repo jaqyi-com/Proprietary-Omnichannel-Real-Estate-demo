@@ -179,7 +179,7 @@ function render() {
   const ai = AI.status();
 
   document.body.innerHTML = `
-  <div class="shell">
+  <div class="shell" data-role="${S.role}">
     <aside class="sidebar">
       <div class="brand">
         <div class="logo"><span class="mark">◆</span>
