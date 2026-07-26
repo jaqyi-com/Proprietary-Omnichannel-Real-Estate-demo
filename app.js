@@ -18,7 +18,7 @@ const S = {
   selectedLeadId: null,
   inboxFilter: "all",
   chat: [],
-  call: { state: "idle", leadId: null, seconds: 0, timer: null, muted: false },
+  call: { state: "idle", leadId: null, seconds: 0, timer: null, muted: false, live: false },
   routing: { running: false, steps: [], assigned: null, escalatedTo: null, pct: 0, timer: null },
   aiBusy: false
 };
@@ -158,6 +158,9 @@ function renderLogin() {
   $$("[data-role]").forEach((b) => b.addEventListener("click", () => {
     S.role = b.dataset.role;
     S.me = D.AGENTS.find((a) => a.role === S.role) || D.AGENTS[0];
+    // Twilio client identity = the signed-in agent, so inbound calls
+    // could be routed back to this browser later.
+    if (window.TWILIO_CONFIG) window.TWILIO_CONFIG.identity = S.me.id;
     S.page = "dashboard";
     save();
     render();
@@ -877,8 +880,17 @@ function pageDialer(c) {
   const st = S.call.state;
   const label = { idle: "Ready to call", dialing: "Dialing…", ringing: "Ringing…", connected: "Connected", ended: "Call ended" }[st];
 
+  const tw = TW.status();
+  const dest = L ? dialTarget(L) : null;
+  const redirected = Boolean(L && dest !== L.phone);
+  const warnUnverified = tw.live && dest && !TW.isAllowed(dest);
+
   c.innerHTML = `
-  <p class="page-intro">Browser-based calling (2.1 VoWiFi). Audio is simulated in this prototype — the call state machine, timer, recording flag and auto-logging to the customer timeline are all real.</p>
+  <p class="page-intro">Browser-based calling (2.1 VoWiFi). ${tw.live
+    ? `<b>Live mode</b> — audio goes out through Twilio from this browser's mic${TW.callerId() ? `, caller ID <span class="mono">${esc(TW.callerId())}</span>` : ""}. The state machine, timer, mute and auto-logging are the same code as the simulation.`
+    : `Audio is simulated in this prototype — the call state machine, timer, recording flag and auto-logging to the customer timeline are all real.`}</p>
+  ${tw.live && redirected ? `<p class="page-intro">Test routing is on — every call rings <span class="mono">${esc(dest)}</span> instead of the lead's own number.</p>` : ""}
+  ${warnUnverified ? `<p class="page-intro" style="border-left-color:#f59e0b">⚠ <b>${esc(dest)}</b> is not on the verified-numbers list. A Twilio trial account only connects numbers you verified in the Console — this call will be rejected.</p>` : ""}
   <div class="dialer">
     <div>
       <div class="phone ${st === "ringing" || st === "dialing" ? "ringing" : ""}">
@@ -911,6 +923,7 @@ function pageDialer(c) {
 
     <div class="card">
       <div class="card-h"><h3>Call queue</h3><div class="spacer"></div>
+        <span class="pill ${tw.live ? "green" : ""}" title="${esc(tw.live ? "Twilio Voice is configured on the server" : "No Twilio credentials — the dialer runs the simulation")}">${tw.live ? "● live" : "○ simulated"}</span>
         <span class="pill">${myLeads().filter((l) => !["won", "lost"].includes(l.stage)).length} open</span></div>
       <div class="table-wrap"><table>
         <thead><tr><th>Lead</th><th>Channel</th><th>Project</th><th>Score</th><th>Last call</th><th></th></tr></thead>
@@ -955,13 +968,37 @@ function pageDialer(c) {
   $$("[data-play]").forEach((b) => b.addEventListener("click", () => toast("Recording playback is stubbed in the prototype. Phase 4 streams the real file from on-premise storage.")));
   const start = $("[data-start]"); if (start) start.addEventListener("click", startCall);
   const hang = $("[data-hang]"); if (hang) hang.addEventListener("click", () => stopCall());
-  const mute = $("[data-mute]"); if (mute) mute.addEventListener("click", () => { S.call.muted = !S.call.muted; renderPage(); });
+  const mute = $("[data-mute]"); if (mute) mute.addEventListener("click", () => {
+    S.call.muted = !S.call.muted;
+    if (S.call.live) TW.mute(S.call.muted);
+    renderPage();
+  });
   const log = $("[data-log]"); if (log) log.addEventListener("click", logCall);
+}
+
+/* Where a live call actually goes. The demo leads carry fictional
+   numbers, so TWILIO_CONFIG.testNumber lets a trial account route every
+   call to the one number it is allowed to reach. */
+function dialTarget(L) {
+  const override = ((window.TWILIO_CONFIG || {}).testNumber || "").trim();
+  return override || L.phone;
+}
+
+/* One timer for both modes — the UI can't tell them apart. */
+function beginCallTimer() {
+  clearInterval(S.call.timer);
+  S.call.timer = setInterval(() => {
+    S.call.seconds++;
+    const t = $(".phone .timer"); if (t) t.textContent = mmss(S.call.seconds);
+  }, 1000);
 }
 
 function startCall() {
   const L = lead(S.call.leadId);
   if (!L) return;
+  if (TW.isLive()) return startLiveCall(L);
+
+  S.call.live = false;
   S.call.state = "dialing"; S.call.seconds = 0; renderPage();
   setTimeout(() => {
     if (S.call.state !== "dialing") return;
@@ -969,17 +1006,56 @@ function startCall() {
     setTimeout(() => {
       if (S.call.state !== "ringing") return;
       S.call.state = "connected";
-      S.call.timer = setInterval(() => {
-        S.call.seconds++;
-        const t = $(".phone .timer"); if (t) t.textContent = mmss(S.call.seconds);
-      }, 1000);
+      beginCallTimer();
       renderPage();
     }, 1800);
   }, 900);
 }
 
+/* Real audio through Twilio. Same four states, driven by SDK events
+   instead of setTimeout, so everything downstream (timer, disposition
+   form, timeline logging) keeps working untouched. */
+async function startLiveCall(L) {
+  S.call.live = true;
+  S.call.state = "dialing"; S.call.seconds = 0; S.call.muted = false;
+  renderPage();
+
+  const ringing = () => { if (S.call.state === "dialing") { S.call.state = "ringing"; renderPage(); } };
+
+  const ended = () => {
+    // stopCall() may have already settled the UI before the SDK event lands.
+    if (S.call.state === "ended" || S.call.state === "idle") return;
+    clearInterval(S.call.timer); S.call.timer = null;
+    // Connected → show the disposition form. Never answered → back to idle.
+    S.call.state = S.call.seconds > 0 ? "ended" : "idle";
+    S.call.live = false;
+    renderPage();
+  };
+
+  const failed = (msg) => {
+    clearInterval(S.call.timer); S.call.timer = null;
+    S.call.state = "idle"; S.call.seconds = 0; S.call.live = false;
+    renderPage();
+    toast(`Call failed — ${msg}`);
+  };
+
+  try {
+    await TW.dial(dialTarget(L), {
+      onRinging: ringing,
+      onConnected: () => { S.call.state = "connected"; beginCallTimer(); renderPage(); },
+      onEnded: ended,
+      onError: failed
+    });
+  } catch (err) {
+    // Mic permission denied, SDK blocked, token failure — say which.
+    failed(err && err.message ? err.message : "could not reach Twilio");
+  }
+}
+
 function stopCall(silent) {
+  if (S.call.live) TW.hangup();
   clearInterval(S.call.timer); S.call.timer = null;
+  S.call.live = false;
   if (S.call.state === "connected") { S.call.state = "ended"; if (!silent) renderPage(); }
   else if (!silent) { S.call.state = "idle"; renderPage(); }
 }
@@ -1692,4 +1768,10 @@ AI.probe().then(() => {
   const st = AI.status();
   badge.className = "ai-badge" + (st.live ? "" : " sim");
   badge.textContent = "✦ " + st.label;
+});
+
+/* Same idea for telephony: find out whether Twilio is wired up, then
+   refresh the dialer only if it happens to be on screen and idle. */
+TW.probe().then(() => {
+  if (TW.isLive() && $(".dialer") && S.call.state === "idle") renderPage();
 });

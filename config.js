@@ -27,6 +27,42 @@ window.AI_CONFIG = {
   timeoutMs: 25000
 };
 
+/* ============================================================
+   TELEPHONY  —  client-side settings only. NO SECRETS HERE.
+   ------------------------------------------------------------
+   Twilio credentials live in Vercel's environment variables and are
+   used by /api/twilio-token and /api/twilio-voice on the server.
+
+   Vercel → Project → Settings → Environment Variables:
+     TWILIO_ACCOUNT_SID      AC...
+     TWILIO_API_KEY_SID      SK...
+     TWILIO_API_KEY_SECRET   ...
+     TWILIO_TWIML_APP_SID    AP...
+     TWILIO_CALLER_ID        +1...    your Twilio number
+     TWILIO_ALLOWED_NUMBERS  +91...,+66...   (trial: verified numbers)
+
+   With nothing set, the dialer runs its simulation exactly as before.
+   ============================================================ */
+
+window.TWILIO_CONFIG = {
+  /* Set automatically to the signed-in agent's id at login. */
+  identity: "",
+
+  /* TRIAL TESTING: the demo leads carry fictional numbers, and a Twilio
+     trial only connects numbers you verified in the Console. Put your own
+     verified number here and every call rings it instead — the lead, the
+     timer and the timeline entry still show the real lead.
+     Clear it for a production deployment. */
+  testNumber: "+919109621850",
+
+  /* Self-hosted Voice SDK path, if you'd rather not hit a CDN.
+     Leave empty to use Twilio's CDN with jsDelivr/unpkg as fallbacks. */
+  sdkUrl: "",
+
+  /* Verbose Twilio SDK logging in the browser console. */
+  debug: false
+};
+
 /* Demo branding — change these per client pitch */
 window.DEMO_BRAND = {
   company: "Siam Estate Group",

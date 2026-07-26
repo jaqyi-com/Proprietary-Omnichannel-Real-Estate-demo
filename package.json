@@ -7,7 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
+    "start": "node dev-server.js",
     "dev": "vercel dev",
-    "check": "node --check api/ai.js && node --check app.js && node --check ai.js && node --check data.js && node --check config.js"
+    "check": "node --check api/ai.js && node --check api/twilio-token.js && node --check api/twilio-voice.js && node --check api/twilio-call.js && node --check app.js && node --check ai.js && node --check twilio.js && node --check data.js && node --check config.js"
   }
 }
