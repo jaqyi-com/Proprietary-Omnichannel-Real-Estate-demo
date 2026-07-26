@@ -38,10 +38,11 @@ const NAV = [
     ["marketing",   "Marketing Auto",   "◈", ["manager", "executive"]]
   ]],
   ["Management", [
+    ["teamlive",    "Team Live View",   "👥", ["manager", "executive"]],
     ["routing",     "Smart Routing",    "⇄", ["manager", "executive"]],
     ["analytics",   "Executive Reports","◉", ["manager", "executive"]],
-    ["brokers",     "B2B Brokers",      "⚹", ["manager", "executive"]],
-    ["pdpa",        "PDPA Center",      "⛨", ["manager", "executive"]]
+    ["brokers",     "B2B Brokers",      "⚹", ["executive"]],
+    ["pdpa",        "PDPA Center",      "⛨", ["executive"]]
   ]]
 ];
 
@@ -235,7 +236,8 @@ function renderPage() {
     dashboard: pageDashboard, inbox: pageInbox, pipeline: pagePipeline, dialer: pageDialer,
     properties: pageProperties, aichat: pageAiChat, aicontent: pageAiContent,
     competitors: pageCompetitors, marketing: pageMarketing, routing: pageRouting,
-    analytics: pageAnalytics, brokers: pageBrokers, pdpa: pagePdpa
+    analytics: pageAnalytics, brokers: pageBrokers, pdpa: pagePdpa,
+    teamlive: pageTeamLive
   }[S.page];
   if (fn) fn(c); else c.innerHTML = `<div class="empty"><div class="big">🚧</div>Page not found</div>`;
 }
@@ -341,6 +343,286 @@ function pageDashboard(c) {
 function kpi(lbl, val, dl, dir) {
   return `<div class="card kpi"><div class="lbl">${esc(lbl)}</div>
     <div class="val">${esc(val)}</div><div class="dl ${dir}">${esc(dl)}</div></div>`;
+}
+
+/* ============================================================
+   TEAM LIVE VIEW  (manager + executive — RBAC 2.1)
+   Manager  → agent live table + leaderboard
+   Executive → full org hierarchy tree THEN agent table
+   ============================================================ */
+
+function pageTeamLive(c) {
+  const agents   = D.AGENTS.filter((a) => a.role === "agent");
+  const managers = D.AGENTS.filter((a) => a.role === "manager");
+  const execs    = D.AGENTS.filter((a) => a.role === "executive");
+
+  /* ---- helpers ---- */
+  function agentLeads(agId) {
+    return S.leads.filter((l) => l.agentId === agId && !["won", "lost"].includes(l.stage));
+  }
+  function agentCallsToday(agId) {
+    return S.calls.filter((c) => c.agentId === agId && (c.at || "").startsWith("2026-07-25")).length;
+  }
+  function agentMsgsToday(agId) {
+    const myLeadIds = S.leads.filter((l) => l.agentId === agId).map((l) => l.id);
+    let n = 0;
+    myLeadIds.forEach((id) => {
+      (S.conversations[id] || []).forEach((m) => {
+        if (m.from === "agent" && (m.at || "").startsWith("2026-07-25")) n++;
+      });
+    });
+    return n;
+  }
+  function activeLead(agId) {
+    return agentLeads(agId).sort((a, b) => (b.score || 0) - (a.score || 0))[0] || null;
+  }
+  const availColor = (av, on) => !on ? "" : av === "free" ? "green" : av === "busy" ? "amber" : "";
+  const availDot   = (av, on) => !on ? "#bbb" : av === "free" ? "var(--green)" : av === "busy" ? "#f59e0b" : "#bbb";
+
+  /* ---- KPIs ---- */
+  const online     = agents.filter((a) => a.online).length;
+  const free       = agents.filter((a) => a.availability === "free" && a.online).length;
+  const busy       = agents.filter((a) => a.availability === "busy").length;
+  const offline    = agents.filter((a) => !a.online).length;
+  const unassigned = S.leads.filter((l) => !l.agentId && !["won","lost"].includes(l.stage)).length;
+
+  /* ---- org hierarchy block (executive only) ---- */
+  function orgHierarchy() {
+    function personCard(p, badgeColor, size = "md") {
+      const isLg = size === "lg";
+      const sz   = isLg ? 48 : 36;
+      const fs   = isLg ? "15px" : "12.5px";
+      const dot  = availDot(p.availability, p.online);
+      return `
+        <div style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;min-width:${isLg?130:110}px">
+          <div style="position:relative;display:inline-block">
+            <span class="av" style="width:${sz}px;height:${sz}px;font-size:${isLg?16:12}px;background:${badgeColor};color:#fff">${esc(p.avatar)}</span>
+            <span style="position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:${dot}"></span>
+          </div>
+          <div style="text-align:center">
+            <div style="font-weight:700;font-size:${fs}">${esc(p.name)}</div>
+            <div class="muted" style="font-size:10.5px">${esc(p.dept)} · ${esc(p.role)}</div>
+            <span class="pill ${availColor(p.availability, p.online)}" style="font-size:10px;margin-top:3px;display:inline-block">
+              ${p.online ? esc(p.availability) : "offline"}
+            </span>
+          </div>
+        </div>`;
+    }
+
+    const totalClosed = agents.reduce((n, a) => n + a.closed, 0);
+    const totalTarget = agents.reduce((n, a) => n + a.target, 0);
+    const orgPct = totalTarget ? Math.round((totalClosed / totalTarget) * 100) : 0;
+
+    return `
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-h">
+        <h3>🏢 Organisation Hierarchy — Live View</h3>
+        <div class="spacer"></div>
+        <span class="pill" style="font-size:11px">${D.AGENTS.length} members</span>
+        <span class="pill green" style="font-size:11px">Live</span>
+      </div>
+      <div class="card-b" style="overflow-x:auto">
+
+        <!-- Tier labels -->
+        <div style="display:flex;gap:0;margin-bottom:6px">
+          <div style="width:90px;font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px">Tier</div>
+          <div style="flex:1;font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px">Members</div>
+          <div style="width:160px;font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px">Team KPI</div>
+        </div>
+
+        <!-- EXECUTIVE ROW -->
+        <div style="display:flex;align-items:center;gap:16px;padding:16px 0 8px;border-top:1px solid var(--border)">
+          <div style="width:90px;font-size:11.5px;font-weight:700;color:#7c3aed">Executive</div>
+          <div style="flex:1;display:flex;gap:24px;flex-wrap:wrap">
+            ${execs.map((p) => personCard(p, "#7c3aed", "lg")).join("")}
+          </div>
+          <div style="width:160px">
+            <div style="font-size:11.5px;margin-bottom:4px">Org closed: <b>${totalClosed} / ${totalTarget}</b></div>
+            <div style="background:var(--border);border-radius:4px;height:7px;overflow:hidden">
+              <div style="height:100%;width:${orgPct}%;background:#7c3aed;border-radius:4px"></div>
+            </div>
+            <div style="font-size:10.5px;color:#7c3aed;margin-top:2px">${orgPct}% to target</div>
+          </div>
+        </div>
+
+        <!-- connector -->
+        <div style="padding-left:45px;padding-bottom:0">
+          <div style="border-left:2px solid var(--border);height:16px;margin-left:20px"></div>
+        </div>
+
+        <!-- MANAGER ROW -->
+        <div style="display:flex;align-items:center;gap:16px;padding:8px 0;border-top:1px solid var(--border)">
+          <div style="width:90px;font-size:11.5px;font-weight:700;color:#0369a1">Manager</div>
+          <div style="flex:1;display:flex;gap:24px;flex-wrap:wrap">
+            ${managers.map((p) => personCard(p, "#0369a1", "md")).join("")}
+          </div>
+          <div style="width:160px">
+            <div style="font-size:11.5px;margin-bottom:4px">Manages <b>${agents.length} agents</b></div>
+            <div style="font-size:11px;color:var(--text-2)">${online} online · ${free} free · ${busy} busy</div>
+          </div>
+        </div>
+
+        <!-- connector -->
+        <div style="padding-left:45px">
+          <div style="border-left:2px solid var(--border);height:16px;margin-left:20px"></div>
+        </div>
+
+        <!-- AGENTS ROW -->
+        <div style="display:flex;align-items:flex-start;gap:16px;padding:8px 0;border-top:1px solid var(--border)">
+          <div style="width:90px;font-size:11.5px;font-weight:700;color:var(--brand);padding-top:8px">Agents</div>
+          <div style="flex:1;display:flex;gap:16px;flex-wrap:wrap">
+            ${agents.map((a) => {
+              const openCnt = agentLeads(a.id).length;
+              const pct = a.target ? Math.min(100, Math.round((a.closed / a.target) * 100)) : 0;
+              return `
+              <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;min-width:130px;text-align:center">
+                <div style="position:relative;display:inline-block;margin-bottom:6px">
+                  <span class="av" style="width:36px;height:36px;font-size:13px;background:var(--brand);color:#fff">${esc(a.avatar)}</span>
+                  <span style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:2px solid #fff;background:${availDot(a.availability, a.online)}"></span>
+                </div>
+                <div style="font-weight:700;font-size:12.5px">${esc(a.name.split(" ")[0])}</div>
+                <div class="muted" style="font-size:10.5px;margin-bottom:5px">${esc(a.languages.join("/"))}</div>
+                <span class="pill ${availColor(a.availability, a.online)}" style="font-size:10px">${a.online ? esc(a.availability) : "offline"}</span>
+                <div style="margin-top:7px;font-size:10.5px;color:var(--text-2)">${openCnt} open · ${a.closed}/${a.target} closed</div>
+                <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;margin-top:4px">
+                  <div style="height:100%;width:${pct}%;background:${a.closed>=a.target?'var(--green)':'var(--brand)'};border-radius:3px"></div>
+                </div>
+              </div>`;
+            }).join("")}
+          </div>
+          <div style="width:160px;padding-top:8px">
+            <div style="font-size:11.5px;margin-bottom:4px">Unassigned: <b style="color:${unassigned?'#ef4444':'var(--green)'}">${unassigned}</b></div>
+            <div style="font-size:11px;color:var(--text-2)">${agents.filter(a=>a.closed>=a.target).length} of ${agents.length} hit target</div>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+  }
+
+  /* ---- agent live table (shared by both roles) ---- */
+  function agentTable() {
+    return `
+    <div class="card">
+      <div class="card-h">
+        <h3>👥 Agent Live Status — Team Monitor (2.1 RBAC)</h3>
+        <div class="spacer"></div>
+        <span class="pill green" style="font-size:11px">Live</span>
+      </div>
+      <div class="card-b" style="padding:0">
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>Agent</th>
+            <th>Status</th>
+            <th>Languages</th>
+            <th>Active Lead</th>
+            <th>Open Leads</th>
+            <th>Calls Today</th>
+            <th>Messages Today</th>
+            <th>Target Progress</th>
+          </tr></thead>
+          <tbody>
+          ${agents.map((a) => {
+            const al       = activeLead(a.id);
+            const openCnt  = agentLeads(a.id).length;
+            const callsCnt = agentCallsToday(a.id);
+            const msgsCnt  = agentMsgsToday(a.id);
+            const pct      = a.target ? Math.min(100, Math.round((a.closed / a.target) * 100)) : 0;
+            const hitTarget = a.closed >= a.target;
+            return `<tr>
+              <td>
+                <div class="row" style="gap:8px;align-items:center">
+                  <span style="position:relative;display:inline-block">
+                    <span class="av" style="width:34px;height:34px;font-size:13px">${esc(a.avatar)}</span>
+                    <span style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:1.5px solid #fff;background:${availDot(a.availability, a.online)}"></span>
+                  </span>
+                  <span><b style="font-size:13px">${esc(a.name)}</b><br>
+                    <span class="muted" style="font-size:11px">${esc(a.dept)}</span></span>
+                </div>
+              </td>
+              <td><span class="pill ${availColor(a.availability, a.online)}">${a.online ? esc(a.availability) : "offline"}</span></td>
+              <td><span style="font-size:12px">${esc(a.languages.join(" / "))}</span></td>
+              <td>${al
+                ? `<span style="font-size:12.5px"><b>${esc(al.name)}</b><br>
+                   <span class="muted" style="font-size:11px">${chanBadge(al.channel)} ${esc(al.inquiry)} · score ${al.score}</span></span>`
+                : `<span class="muted" style="font-size:12px">—</span>`
+              }</td>
+              <td><span class="pill ${openCnt > 4 ? "amber" : ""}" style="font-size:12px">${openCnt}</span></td>
+              <td><b style="font-size:13px">${callsCnt}</b></td>
+              <td><b style="font-size:13px">${msgsCnt}</b></td>
+              <td style="min-width:140px">
+                <div style="font-size:11.5px;margin-bottom:4px;display:flex;justify-content:space-between">
+                  <span>${a.closed} / ${a.target} closed</span>
+                  <span style="color:${hitTarget?'var(--green)':'var(--brand)'}">${pct}%</span>
+                </div>
+                <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+                  <div style="height:100%;border-radius:4px;width:${pct}%;background:${hitTarget?'var(--green)':'var(--brand)'};transition:width .4s"></div>
+                </div>
+              </td>
+            </tr>`;
+          }).join("")}
+          </tbody>
+        </table></div>
+      </div>
+    </div>`;
+  }
+
+  /* ---- bottom panels (shared) ---- */
+  function bottomPanels() {
+    return `
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <div class="card-h"><h3>📋 Specialties &amp; Coverage</h3></div>
+        <div class="card-b" style="padding:0">
+          <div class="table-wrap"><table>
+            <thead><tr><th>Agent</th><th>Specialties</th><th>Languages</th><th>Online</th></tr></thead>
+            <tbody>
+            ${agents.map((a) => `<tr>
+              <td><b>${esc(a.name)}</b></td>
+              <td>${a.specialties.length ? a.specialties.map(s=>`<span class="pill" style="font-size:11px">${esc(s)}</span>`).join(" ") : '<span class="muted">—</span>'}</td>
+              <td>${a.languages.map(l=>`<span class="pill" style="font-size:11px">${esc(l)}</span>`).join(" ")}</td>
+              <td><span class="pill ${a.online?'green':''}">${a.online?'Online':'Offline'}</span></td>
+            </tr>`).join("")}
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>🔥 Leaderboard — Closed This Month</h3></div>
+        <div class="card-b">
+          ${[...agents].sort((a,b)=>b.closed-a.closed).map((a,i)=>`
+            <div class="funnel-row" style="margin-bottom:10px">
+              <span style="width:20px;font-weight:700;color:${i===0?'#f59e0b':i===1?'#9ca3af':i===2?'#b45309':'var(--text-2)'}">${i+1}</span>
+              <span class="av" style="width:28px;height:28px;font-size:11px">${esc(a.avatar)}</span>
+              <span style="font-size:13px;flex:1">${esc(a.name)}</span>
+              <div class="fb" style="width:${a.target?(a.closed/a.target)*55:0}%;background:${a.closed>=a.target?'var(--green)':'var(--brand)'}"></div>
+              <b style="font-size:13px;min-width:28px;text-align:right">${a.closed}</b>
+            </div>`).join("")}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ---- assemble page ---- */
+  const intro = S.role === "executive"
+    ? "Full organisational hierarchy — live status of every tier from Executive down to Sales Agents."
+    : "Real-time view of every sales agent — who is online, what they are working on right now, and how they are tracking against their monthly target.";
+
+  c.innerHTML = `
+  <p class="page-intro">${esc(intro)}</p>
+
+  <div class="grid g4" style="margin-bottom:18px">
+    ${kpi("Online agents",  online,      `${offline} offline`,                     online > 0 ? "up" : "dn")}
+    ${kpi("Available now",  free,        `${busy} busy`,                            free  > 0 ? "up" : "")}
+    ${kpi("Unassigned leads", unassigned, unassigned ? "need routing" : "all routed", unassigned ? "dn" : "up")}
+    ${kpi("Team size",  D.AGENTS.length, `${agents.length} agents · ${managers.length} mgr · ${execs.length} exec`, "")}
+  </div>
+
+  ${S.role === "executive" ? orgHierarchy() : ""}
+
+  ${agentTable()}
+
+  ${bottomPanels()}`;
 }
 
 /* ============================================================
